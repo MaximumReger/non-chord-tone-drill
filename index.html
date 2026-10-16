@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Non-Chord Tone Drill</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,500;6..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+<style>
+  /* Layout: one centered practice desk — engraved score with clickable melody, a grid of non-chord-tone buttons beneath. */
+  :root {
+    --bg: #eef1f4;
+    --paper: #fbfcfd;
+    --ink: #1b2330;
+    --muted: #5d6878;
+    --rule: #d3d9e1;
+    --accent: #2f4a8a;
+    --good: #1f7a45;
+    --bad: #c0352b;
+    --font-display: "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif;
+    --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12161d; --paper: #1b212b; --ink: #e4e9f0; --muted: #98a3b3;
+      --rule: #2e3644; --accent: #8fa8e8; --good: #4cc27c; --bad: #ff6b5e;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12161d; --paper: #1b212b; --ink: #e4e9f0; --muted: #98a3b3;
+    --rule: #2e3644; --accent: #8fa8e8; --good: #4cc27c; --bad: #ff6b5e;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    line-height: 1.5;
+    padding-block: 2rem 3rem;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  main { max-width: 40rem; margin: 0 auto; display: grid; gap: 1.25rem; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+  h1 { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 0; }
+  .progress { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .sheet { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem 1rem 0.5rem; display: grid; gap: 0.5rem; }
+  .prompt { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.25rem, 4.5vw, 1.6rem); line-height: 1.2; margin: 0; text-align: center; text-wrap: balance; }
+  .sub { margin: 0; text-align: center; color: var(--muted); font-size: 0.9rem; }
+  #score { color: var(--ink); display: flex; justify-content: center; }
+  #score svg { width: 100%; max-width: 580px; height: auto; display: block; overflow: visible; }
+
+  #score .mnote { cursor: pointer; transition: opacity 0.1s; outline: none; }
+  #score .mnote:hover { opacity: 0.4; }
+  #score .mnote.sel, #score .mnote.done { color: var(--good); }
+  #score .mnote.bad { color: var(--bad); }
+  #score .mnote.done { cursor: default; }
+  #score .mnote.done:hover { opacity: 1; }
+  #score .mnote .hit { fill: transparent; stroke: none; }
+  #score .mnote:focus-visible .hit { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 2; }
+  #score .rn { font-family: var(--font-display); font-size: 17px; font-weight: 500; }
+  #score .rn .figure { font-family: var(--font-body); font-size: 10.5px; font-weight: 500; }
+  #score .nct-label { font-family: var(--font-mono); font-size: 12px; font-weight: 600; fill: var(--good); }
+
+  .group { display: grid; gap: 0.5rem; }
+  .group h2 { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 0; }
+  .buttons { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
+  button {
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    font-weight: 500;
+    line-height: 1.25;
+    padding: 0.7rem 0.6rem;
+    border-radius: 5px;
+    border: 1.5px solid var(--rule);
+    background: var(--paper);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  button .abbr { font-family: var(--font-mono); font-size: 0.8em; color: var(--muted); margin-left: 0.3em; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+  button:disabled { cursor: default; opacity: 0.5; }
+  .type.no { background: var(--bad); border-color: var(--bad); color: #fff; opacity: 1; }
+  .type.ok { background: var(--good); border-color: var(--good); color: #fff; opacity: 1; }
+  .type.no .abbr, .type.ok .abbr { color: #fff; }
+
+  .feedback { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; min-height: 2.75rem; }
+  .msg { margin: 0; font-weight: 600; }
+  .msg.no { color: var(--bad); }
+  .msg.ok { color: var(--good); }
+  #nextBtn { background: var(--accent); border-color: var(--accent); color: var(--paper); font-weight: 600; padding-inline: 1.2rem; }
+  @media (prefers-reduced-motion: reduce) { #score .mnote { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Non-Chord Tone Drill</h1>
+    <span class="progress" id="progress"></span>
+  </header>
+
+  <section class="sheet" aria-label="Musical example">
+    <p class="prompt">Find the non-chord tones in the melody</p>
+    <p class="sub">Click a melody note, then choose its type below.</p>
+    <div id="score"></div>
+  </section>
+
+  <section class="group" aria-labelledby="typesLabel">
+    <h2 id="typesLabel">Non-chord tone type</h2>
+    <div class="buttons" id="types">
+      <button type="button" class="type" data-t="PT" disabled>Passing tone<span class="abbr">PT</span></button>
+      <button type="button" class="type" data-t="NT" disabled>Neighbor tone<span class="abbr">NT</span></button>
+      <button type="button" class="type" data-t="APP" disabled>Appoggiatura<span class="abbr">APP</span></button>
+      <button type="button" class="type" data-t="ET" disabled>Escape tone<span class="abbr">ET</span></button>
+      <button type="button" class="type" data-t="SUS" disabled>Suspension<span class="abbr">SUS</span></button>
+      <button type="button" class="type" data-t="DN" disabled>Double-neighbor tone<span class="abbr">DN</span></button>
+      <button type="button" class="type" data-t="ANT" disabled>Anticipation<span class="abbr">ANT</span></button>
+    </div>
+  </section>
+
+  <div class="feedback" aria-live="polite">
+    <p class="msg" id="msg"></p>
+    <button type="button" id="nextBtn" hidden>Generate another example</button>
+  </div>
+</main>
+
+<script>
+(() => {
+  const LETTERS = ["C", "D", "E", "F", "G", "A", "B"];
+  const NAT = [0, 2, 4, 5, 7, 9, 11];
+  const STEPS = {
+    major: [0, 2, 4, 5, 7, 9, 11],
+    natural: [0, 2, 3, 5, 7, 8, 10],
+    harmonic: [0, 2, 3, 5, 7, 8, 11],
+  };
+  const KEYS = {
+    major: ["C", "G", "D", "A", "E", "B", "F", "Bb", "Eb", "Ab", "Db"],
+    minor: ["A", "E", "B", "F#", "C#", "G#", "D", "G", "C", "F", "Bb"],
+  };
+  const PROGS = {
+    major: ["I IV V", "I ii6 V", "I V6 I", "I vi V", "I IV I", "I V I", "IV V I", "ii6 V I", "I ii65 V",
+      "I V7 I", "I V65 I", "vi ii6 V", "I vii°6 I6", "I6 IV V", "I IV64 I", "vi IV V", "ii V I",
+      "I V43 I6", "IV V7 I", "ii7 V7 I", "I iii IV"],
+    minor: ["i iv V", "i ii°6 V", "i V6 i", "i VI V", "i iv i", "i V i", "iv V i", "ii°6 V i", "i V7 i",
+      "i V65 i", "VI ii°6 V", "i vii°7 i", "i6 iv V", "III iv V", "i V43 i6", "iv V7 i", "iiø65 V i",
+      "i VII III", "i iv64 i"],
+  };
+  const TYPES = ["PT", "NT", "APP", "ET", "SUS", "DN", "ANT"];
+  const TYPE_NAMES = {
+    PT: "passing tone", NT: "neighbor tone", APP: "appoggiatura", ET: "escape tone",
+    SUS: "suspension", DN: "double-neighbor tone", ANT: "anticipation",
+  };
+  const NUMERALS = ["I", "II", "III", "IV", "V", "VI", "VII"];
+  const FIGS = { "": [], "6": ["6"], "64": ["6", "4"], "7": ["7"], "65": ["6", "5"], "43": ["4", "3"], "42": ["4", "2"] };
+  // Allowed melodic intervals: diatonic size -> semitone sizes.
+  const INTERVALS = { 0: [0], 1: [1, 2], 2: [3, 4], 3: [5], 4: [7], 5: [8, 9], 7: [12] };
+  const MEL_RANGE = [62, 79];
+
+  const rand = arr => arr[Math.floor(Math.random() * arr.length)];
+  const same = (a, b) => a.letter === b.letter && a.acc === b.acc;
+  const pcOf = n => (NAT[n.letter] + n.acc + 120) % 12;
+
+  function parseTonic(s) {
+    return { letter: LETTERS.indexOf(s[0]), acc: s[1] === "#" ? 1 : s[1] === "b" ? -1 : 0 };
+  }
+  function buildScale(tonic, type) {
+    const tpc = pcOf(tonic);
+    return STEPS[type].map((step, d) => {
+      const letter = (tonic.letter + d) % 7;
+      const pc = (tpc + step) % 12;
+      return { letter, acc: ((pc - NAT[letter] + 18) % 12) - 6 };
+    });
+  }
+
+  function makeKey(mode, tonicStr) {
+    const tonic = parseTonic(tonicStr);
+    const sigScale = buildScale(tonic, mode === "major" ? "major" : "natural");
+    const sig = {};
+    sigScale.forEach(n => (sig[n.letter] = n.acc));
+    const lt = buildScale(tonic, mode === "major" ? "major" : "harmonic")[6];
+    return { mode, tonic, tonicStr, sig, lt, vf: tonicStr + (mode === "minor" ? "m" : "") };
+  }
+
+  function makeChord(rn, key) {
+    const m = rn.match(/^(VII|VI|IV|V|III|II|I|vii|vi|iv|v|iii|ii|i)([°ø]?)(\d*)$/);
+    const deg = NUMERALS.indexOf(m[1].toUpperCase());
+    const upper = m[1] === m[1].toUpperCase();
+    const figs = FIGS[m[3]];
+    const sev = ["7", "65", "43", "42"].includes(m[3]);
+    const inv = sev ? ["7", "65", "43", "42"].indexOf(m[3]) : ["", "6", "64"].indexOf(m[3]);
+    let type = key.mode === "major" ? "major" : "natural";
+    if (key.mode === "minor" && (deg === 4 || (deg === 6 && !upper))) type = "harmonic";
+    const scale = buildScale(key.tonic, type);
+    const tones = (sev ? [0, 2, 4, 6] : [0, 2, 4]).map(i => scale[(deg + i) % 7]);
+    return { rn, numeral: m[1] + m[2], figs, sev, inv, tones };
+  }
+
+  // Close-position block chord in the bass clef, built up from the bass note.
+  function voiceBass(ch) {
+    const n = ch.tones.length;
+    const options = [];
+    for (let oct = 1; oct <= 3; oct++) {
+      const first = ch.tones[ch.inv];
+      const midi = 12 * (oct + 1) + NAT[first.letter] + first.acc;
+      if (midi < 40 || midi > 50) continue;
+      const notes = [{ ...first, oct, midi }];
+      for (let k = 1; k < n; k++) {
+        const t = ch.tones[(ch.inv + k) % n];
+        const prev = notes[notes.length - 1];
+        let o = prev.oct;
+        let mm = 12 * (o + 1) + NAT[t.letter] + t.acc;
+        while (mm <= prev.midi) { o++; mm += 12; }
+        notes.push({ ...t, oct: o, midi: mm });
+      }
+      options.push(notes);
+    }
+    return options.length ? rand(options) : null;
+  }
+
+  // ---------- Melody ----------
+  function spellMelody(ds, chords, key) {
+    const notes = ds.map(d => ({ d, letter: ((d % 7) + 7) % 7, oct: Math.floor(d / 7) }));
+    for (let i = notes.length - 1; i >= 0; i--) {
+      const n = notes[i];
+      const ch = chords[i >> 1];
+      const ct = ch.tones.find(t => t.letter === n.letter);
+      if (ct) {
+        n.acc = ct.acc;
+        n.ct = true;
+      } else {
+        n.ct = false;
+        n.acc = key.sig[n.letter];
+        if (key.mode === "minor") {
+          const deg = (n.letter - key.tonic.letter + 7) % 7;
+          const nx = notes[i + 1];
+          const nextCh = chords[(i + 1) >> 1];
+          if (deg === 6) {
+            const nextHasLT = nextCh && nextCh.tones.some(t => same(t, key.lt));
+            if (nextHasLT || (nx && nx.d === n.d + 1)) n.acc = key.lt.acc;
+          } else if (deg === 5 && nx && nx.d === n.d + 1 && same(nx, key.lt)) {
+            n.acc = key.sig[n.letter] + 1;
+          }
+        }
+      }
+      n.midi = 12 * (n.oct + 1) + NAT[n.letter] + n.acc;
+    }
+    return notes;
+  }
+
+  // Name every non-chord tone by its approach and resolution, or return null if any is not a textbook type.
+  function classify(notes) {
+    if (!notes[0].ct || !notes[5].ct) return null;
+    for (let i = 1; i < 6; i++) {
+      const dd = Math.abs(notes[i].d - notes[i - 1].d);
+      const ds = Math.abs(notes[i].midi - notes[i - 1].midi);
+      if (!INTERVALS[dd] || !INTERVALS[dd].includes(ds)) return null;
+      if (Math.sign(notes[i].d - notes[i - 1].d) !== Math.sign(notes[i].midi - notes[i - 1].midi)) return null;
+    }
+    const types = Array(6).fill(null);
+    for (let i = 1; i <= 4; i++) {
+      if (notes[i].ct || types[i]) continue;
+      const a = notes[i - 1], n = notes[i], b = notes[i + 1];
+      if (!a.ct) return null;
+      if (!b.ct) {
+        if (i + 2 > 5) return null;
+        const y = notes[i + 2];
+        const s1 = n.d - a.d, s2 = b.d - a.d;
+        if (y.ct && y.midi === a.midi && y.d === a.d && Math.abs(s1) === 1 && s2 === -s1) {
+          types[i] = types[i + 1] = "DN";
+          continue;
+        }
+        return null;
+      }
+      const da = n.d - a.d, db = b.d - n.d;
+      if (da === 0) {
+        if (n.midi === a.midi && i % 2 === 0 && db === -1) types[i] = "SUS";
+        else return null;
+      } else if (db === 0) {
+        if (n.midi === b.midi && i % 2 === 1) types[i] = "ANT";
+        else return null;
+      } else if (Math.abs(da) === 1 && Math.abs(db) === 1) {
+        if (da === db) types[i] = "PT";
+        else if (a.midi === b.midi) types[i] = "NT";
+        else return null;
+      } else if (Math.abs(da) >= 2 && Math.abs(db) === 1 && Math.sign(da) !== Math.sign(db)) {
+        types[i] = "APP";
+      } else if (Math.abs(da) === 1 && Math.abs(db) >= 2 && Math.sign(da) !== Math.sign(db) && i % 2 === 1) {
+        types[i] = "ET";
+      } else return null;
+    }
+    // Repeated notes appear only as a suspension's preparation or an anticipation's resolution.
+    for (let i = 1; i < 6; i++) {
+      if (notes[i].d === notes[i - 1].d && types[i] !== "SUS" && types[i - 1] !== "ANT") return null;
+    }
+    const count = types.filter(Boolean).length;
+    return count >= 2 && count <= 3 ? types : null;
+  }
+
+  const DELTAS = [[0, 1], [1, 4], [-1, 4], [2, 2], [-2, 2], [3, 1], [-3, 1], [4, 0.5], [-4, 0.5], [5, 0.3], [-5, 0.3]];
+  const DELTA_TOTAL = DELTAS.reduce((s, [, w]) => s + w, 0);
+  function randDelta() {
+    let r = Math.random() * DELTA_TOTAL;
+    for (const [d, w] of DELTAS) { if ((r -= w) < 0) return d; }
+    return 1;
+  }
+
+  function generate() {
+    for (let attempt = 0; attempt < 400; attempt++) {
+      const target = rand(TYPES);
+      const mode = Math.random() < 0.5 ? "major" : "minor";
+      const key = makeKey(mode, rand(KEYS[mode]));
+      const chords = rand(PROGS[mode]).split(" ").map(rn => makeChord(rn, key));
+      const bass = chords.map(voiceBass);
+      if (bass.some(b => !b)) continue;
+      // Possible first melody notes: chord tones of the first chord.
+      const starts = [];
+      for (let d = 28; d <= 42; d++) {
+        const letter = d % 7;
+        const t = chords[0].tones.find(x => x.letter === letter);
+        if (!t) continue;
+        const midi = 12 * (Math.floor(d / 7) + 1) + NAT[letter] + t.acc;
+        if (midi >= 64 && midi <= 76) starts.push(d);
+      }
+      for (let tries = 0; tries < 3000; tries++) {
+        const ds = [rand(starts)];
+        for (let i = 1; i < 6; i++) ds.push(ds[i - 1] + randDelta());
+        const notes = spellMelody(ds, chords, key);
+        if (notes.some(n => n.midi < MEL_RANGE[0] || n.midi > MEL_RANGE[1])) continue;
+        const types = classify(notes);
+        if (types && types.includes(target)) return { key, chords, bass, notes, types };
+      }
+    }
+    throw new Error("Could not generate an example");
+  }
+
+  // ---------- Rendering ----------
+  const SVGNS = "http://www.w3.org/2000/svg";
+  function svgEl(name, attrs, parent) {
+    const el = document.createElementNS(SVGNS, name);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(el);
+    return el;
+  }
+  const ACC_CODE = { "-2": "bb", "-1": "b", "0": "n", "1": "#", "2": "##" };
+
+  let view = null; // { svg, treble, melodyNotes, groups, centers }
+
+  function render(ex) {
+    const VF = Vex.Flow;
+    const el = document.getElementById("score");
+    el.innerHTML = "";
+    const W = 560, H = 282;
+    const renderer = new VF.Renderer(el, VF.Renderer.Backends.SVG);
+    renderer.resize(W, H);
+    const ctx = renderer.getContext();
+    ctx.setFillStyle("currentColor");
+    ctx.setStrokeStyle("currentColor");
+    const x = 36, w = W - x - 12;
+    const treble = new VF.Stave(x, 16, w).addClef("treble").addKeySignature(ex.key.vf).addTimeSignature("3/2");
+    const bass = new VF.Stave(x, 128, w).addClef("bass").addKeySignature(ex.key.vf).addTimeSignature("3/2");
+    treble.setEndBarType(VF.Barline.type.END);
+    bass.setEndBarType(VF.Barline.type.END);
+    const start = Math.max(treble.getNoteStartX(), bass.getNoteStartX());
+    treble.setNoteStartX(start);
+    bass.setNoteStartX(start);
+    treble.setContext(ctx).draw();
+    bass.setContext(ctx).draw();
+    for (const type of ["BRACE", "SINGLE_LEFT"]) {
+      new VF.StaveConnector(treble, bass).setType(VF.StaveConnector.type[type]).setContext(ctx).draw();
+    }
+    new VF.StaveConnector(treble, bass).setType(VF.StaveConnector.type.BOLD_DOUBLE_RIGHT).setContext(ctx).draw();
+
+    // Accidentals last for the whole measure, per staff and octave.
+    const tracker = () => {
+      const state = {};
+      return n => {
+        const k = n.letter + "/" + n.oct;
+        const cur = k in state ? state[k] : ex.key.sig[n.letter];
+        state[k] = n.acc;
+        return cur !== n.acc;
+      };
+    };
+    const trebleAcc = tracker();
+    const melodyNotes = ex.notes.map((n, i) => {
+      const sn = new VF.StaveNote({ clef: "treble", keys: [`${LETTERS[n.letter].toLowerCase()}/${n.oct}`], duration: "q", auto_stem: true });
+      const tiedIn = ex.types[i] === "SUS";
+      if (trebleAcc(n) && !tiedIn) sn.addModifier(new VF.Accidental(ACC_CODE[n.acc]), 0);
+      return sn;
+    });
+    const bassAcc = tracker();
+    const bassNotes = ex.bass.map(chord => {
+      const sn = new VF.StaveNote({ clef: "bass", keys: chord.map(n => `${LETTERS[n.letter].toLowerCase()}/${n.oct}`), duration: "h", auto_stem: true });
+      chord.forEach((n, i) => { if (bassAcc(n)) sn.addModifier(new VF.Accidental(ACC_CODE[n.acc]), i); });
+      return sn;
+    });
+    const tv = new VF.Voice({ num_beats: 3, beat_value: 2 }).addTickables(melodyNotes);
+    const bv = new VF.Voice({ num_beats: 3, beat_value: 2 }).addTickables(bassNotes);
+    new VF.Formatter().joinVoices([tv]).joinVoices([bv]).format([tv, bv], x + w - start - 24);
+    tv.draw(ctx, treble);
+    bv.draw(ctx, bass);
+    ex.types.forEach((t, i) => {
+      if (t === "SUS") {
+        new VF.StaveTie({ first_note: melodyNotes[i - 1], last_note: melodyNotes[i], first_indices: [0], last_indices: [0] }).setContext(ctx).draw();
+      }
+    });
+
+    const svg = el.querySelector("svg");
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    svg.removeAttribute("width");
+    svg.removeAttribute("height");
+    svg.style.width = "";
+    svg.style.height = "";
+
+    const headCenter = sn => {
+      try { return (sn.getNoteHeadBeginX() + sn.getNoteHeadEndX()) / 2; } catch (e) { return sn.getAbsoluteX() + 6; }
+    };
+
+    // Roman numerals and figures beneath the bass staff.
+    const rnY = bass.getYForLine(4) + 40;
+    bassNotes.forEach((sn, i) => {
+      const ch = ex.chords[i];
+      const g = svgEl("g", { class: "rn", fill: "currentColor" }, svg);
+      const t = svgEl("text", { x: 0, y: rnY }, g);
+      t.textContent = ch.numeral;
+      const tw = t.getComputedTextLength();
+      let total = tw;
+      if (ch.figs.length === 1) {
+        const f = svgEl("text", { x: tw + 1, y: rnY - 7, class: "figure" }, g);
+        f.textContent = ch.figs[0];
+        total += 1 + f.getComputedTextLength();
+      } else if (ch.figs.length === 2) {
+        const f1 = svgEl("text", { x: tw + 1, y: rnY - 8, class: "figure" }, g);
+        const f2 = svgEl("text", { x: tw + 1, y: rnY + 2, class: "figure" }, g);
+        f1.textContent = ch.figs[0];
+        f2.textContent = ch.figs[1];
+        total += 1 + Math.max(f1.getComputedTextLength(), f2.getComputedTextLength());
+      }
+      g.setAttribute("transform", `translate(${headCenter(sn) - total / 2},0)`);
+    });
+
+    // Make melody notes clickable.
+    const groups = [...svg.querySelectorAll(".vf-stavenote")].slice(0, 6);
+    const centers = melodyNotes.map(headCenter);
+    groups.forEach((g, i) => {
+      const bb = g.getBBox();
+      const hit = svgEl("rect", { class: "hit", x: bb.x - 6, y: bb.y - 6, width: bb.width + 12, height: bb.height + 12, rx: 3 });
+      g.insertBefore(hit, g.firstChild);
+      g.classList.add("mnote");
+      g.setAttribute("tabindex", "0");
+      g.setAttribute("role", "button");
+      g.setAttribute("aria-label", `Melody note ${i + 1}`);
+      g.addEventListener("click", () => selectNote(i));
+      g.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectNote(i); }
+      });
+    });
+    view = { svg, treble, groups, centers };
+  }
+
+  function addLabel(i, text) {
+    const g = view.groups[i];
+    const bb = g.getBBox();
+    const y = Math.min(view.treble.getYForLine(0), bb.y + 6) - 10;
+    const t = svgEl("text", { class: "nct-label", x: view.centers[i], y, "text-anchor": "middle" }, view.svg);
+    t.textContent = text;
+  }
+
+  // ---------- Interaction ----------
+  const typeButtons = [...document.querySelectorAll(".type")];
+  const msg = document.getElementById("msg");
+  const nextBtn = document.getElementById("nextBtn");
+  const progress = document.getElementById("progress");
+  let ex = null, selected = null, done = [];
+
+  function say(text, kind) {
+    msg.textContent = text;
+    msg.className = "msg" + (kind ? " " + kind : "");
+  }
+  function resetButtons(enabled) {
+    typeButtons.forEach(b => { b.classList.remove("ok", "no"); b.disabled = !enabled; });
+  }
+  function updateProgress() {
+    const total = ex.types.filter(Boolean).length;
+    progress.textContent = `${done.filter(Boolean).length} of ${total} identified`;
+  }
+
+  function selectNote(i) {
+    if (!ex || done[i]) return;
+    view.groups.forEach((g, j) => { if (!done[j]) g.classList.remove("sel", "bad"); });
+    if (ex.types[i]) {
+      selected = i;
+      view.groups[i].classList.add("sel");
+      resetButtons(true);
+      say("That's a non-chord tone. Now choose its type.", "ok");
+    } else {
+      selected = null;
+      view.groups[i].classList.add("bad");
+      resetButtons(false);
+      say("That's a chord tone. Try another note.", "no");
+    }
+  }
+
+  typeButtons.forEach(btn => btn.addEventListener("click", () => {
+    if (selected === null) return;
+    const answer = ex.types[selected];
+    if (btn.dataset.t === answer) {
+      btn.classList.add("ok");
+      typeButtons.forEach(b => { if (b !== btn) { b.disabled = true; b.classList.remove("no"); } });
+      done[selected] = true;
+      view.groups[selected].classList.remove("sel");
+      view.groups[selected].classList.add("done");
+      view.groups[selected].removeAttribute("tabindex");
+      addLabel(selected, answer);
+      selected = null;
+      updateProgress();
+      const left = ex.types.filter((t, j) => t && !done[j]).length;
+      if (left === 0) {
+        say("Correct! You found every non-chord tone.", "ok");
+        nextBtn.hidden = false;
+        nextBtn.focus();
+      } else {
+        say(`Correct, that's a ${TYPE_NAMES[answer]}. ${left} more to find.`, "ok");
+      }
+    } else {
+      btn.classList.add("no");
+      say("Not quite. Try again.", "no");
+    }
+  }));
+
+  function next() {
+    ex = generate();
+    selected = null;
+    done = Array(6).fill(false);
+    resetButtons(false);
+    say("");
+    nextBtn.hidden = true;
+    render(ex);
+    updateProgress();
+  }
+  nextBtn.addEventListener("click", next);
+
+  next();
+})();
+</script>
+</body>
+</html>
